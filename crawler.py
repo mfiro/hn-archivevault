@@ -1,3 +1,4 @@
+import argparse 
 import sqlite3
 from tqdm import tqdm
 from helpers import load_json, save_json
@@ -69,7 +70,12 @@ def update_new_items(first_run=False):
         fetch_and_store_item(item_id)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Update Hacker News items in database.')
+    parser.add_argument('--first_run', action='store_true', 
+                        help='Set this flag if it is the first run to only fetch the most recent items.')
+    args = parser.parse_args()
+    
     print(f"Running the crawler ...")
     client = Client()
-    update_new_items(first_run=True)
+    update_new_items(first_run=args.first_run)
     #fetch_and_store_item(39720909)
