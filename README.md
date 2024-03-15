@@ -31,9 +31,8 @@ python crawler.py --first_run
 ```
 For subsequent updates to the archive just omit flag:
 ```bash
-python crawler.py --first_run
-```
 python crawler.py
+```
 
 
 ## Author
