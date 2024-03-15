@@ -1,7 +1,6 @@
 import argparse 
 import sqlite3
 from tqdm import tqdm
-from helpers import load_json, save_json
 from hn import Client
 
 
@@ -31,7 +30,7 @@ def insert_comment(data):
     connection.close()
 
 
-def fetch_and_store_item(item_id):
+def fetch_and_store_item(item_id, skip_comments):
     print(f"Fetching item id {item_id} ...")
     item = client.get_item(item_id)
 
@@ -41,7 +40,7 @@ def fetch_and_store_item(item_id):
         if item['type'] == 'story':
             print(f"Inserting {item_id} to stories in DB ...")
             insert_story(item)
-        elif item['type'] == 'comment':
+        elif item['type'] == 'comment' and not skip_comments:
             print(f"Inserting {item_id} to comments in DB ...")
             insert_comment(item)
 
@@ -56,7 +55,7 @@ def get_current_max_id_from_db():
     return max_id or 0
 
 
-def update_new_items(first_run=False):
+def update_new_items(first_run=False, skip_comments=False):
     max_id = client.get_maxitem()
     if first_run:
         # Set a more recent starting point for the first run, as the first run takes time.
@@ -67,15 +66,18 @@ def update_new_items(first_run=False):
     # Now proceed to fetch items from current_max_id up to the max_id
     print(f"Start Fetching {max_id - current_max_id} items ...")
     for item_id in tqdm(range(current_max_id + 1, max_id + 1)):
-        fetch_and_store_item(item_id)
+        fetch_and_store_item(item_id, skip_comments)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Update Hacker News items in database.')
     parser.add_argument('--first_run', action='store_true', 
                         help='Set this flag if it is the first run to only fetch the most recent items.')
+    parser.add_argument('--skip_comments', action='store_true', 
+                        help="Set this flag if you don't want to store the comments in the database")
     args = parser.parse_args()
     
     print(f"Running the crawler ...")
     client = Client()
-    update_new_items(first_run=args.first_run)
+    update_new_items(first_run=args.first_run,
+                     skip_comments=args.skip_comments)
     #fetch_and_store_item(39720909)
