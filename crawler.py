@@ -10,9 +10,9 @@ def insert_story(data):
     cursor = connection.cursor()
     
     cursor.execute('''
-    INSERT or REPLACE INTO stories (id, by, score, time, title, type, url, time_str, synced_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data['id'], data['by'], data['score'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
+    INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (data['id'], data['by'], data['score'], data['descendants'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
     
     connection.commit()
     connection.close()
@@ -95,7 +95,6 @@ if __name__ == '__main__':
     
     print(f"Running the crawler ...")
     client = Client()
-
     if args.update_stories:
         print(f"Updating stories ...")
         update_all_stories()

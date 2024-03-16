@@ -10,6 +10,7 @@ def setup_database():
         id INTEGER PRIMARY KEY,
         by TEXT,
         score INTEGER,
+        comment_count INTEGER,
         time INTEGER,
         title TEXT,
         type TEXT,
