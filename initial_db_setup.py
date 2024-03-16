@@ -14,7 +14,8 @@ def setup_database():
         title TEXT,
         type TEXT,
         url TEXT,
-        time_str TEXT
+        time_str TEXT,
+        synced_at INTEGER,
     )
     ''')
     

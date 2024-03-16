@@ -1,5 +1,6 @@
 import argparse 
 import sqlite3
+import time
 from tqdm import tqdm
 from hn import Client
 
@@ -9,9 +10,9 @@ def insert_story(data):
     cursor = connection.cursor()
     
     cursor.execute('''
-    INSERT or REPLACE INTO stories (id, by, score, time, title, type, url, time_str)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data['id'], data['by'], data['score'], data['time'], data['title'], data['type'], data.get('url'), data['time_str']))
+    INSERT or REPLACE INTO stories (id, by, score, time, title, type, url, time_str, synced_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (data['id'], data['by'], data['score'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
     
     connection.commit()
     connection.close()
@@ -30,7 +31,7 @@ def insert_comment(data):
     connection.close()
 
 
-def fetch_and_store_item(item_id, skip_comments):
+def fetch_and_store_item(item_id, skip_comments=False):
     print(f"Fetching item id {item_id} ...")
     item = client.get_item(item_id)
 
@@ -68,16 +69,36 @@ def update_new_items(first_run=False, skip_comments=False):
     for item_id in tqdm(range(current_max_id + 1, max_id + 1)):
         fetch_and_store_item(item_id, skip_comments)
 
+
+def update_all_stories():
+    # Get all the story ids
+    connection = sqlite3.connect('hn_archive.db')
+    cursor = connection.cursor()
+    sql_query = 'SELECT id FROM stories'
+    cursor.execute(sql_query)
+    story_ids = cursor.fetchall()
+    connection.close()
+
+    # Loop over them
+    for story_id in tqdm(story_ids):
+        fetch_and_store_item(story_id[0])
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Update Hacker News items in database.')
     parser.add_argument('--first_run', action='store_true', 
                         help='Set this flag if it is the first run to only fetch the most recent items.')
     parser.add_argument('--skip_comments', action='store_true', 
                         help="Set this flag if you don't want to store the comments in the database")
+    parser.add_argument('--update_stories', action='store_true', 
+                        help="Set this flag if you just want to update the story informations.")
     args = parser.parse_args()
     
     print(f"Running the crawler ...")
     client = Client()
-    update_new_items(first_run=args.first_run,
+
+    if args.update_stories:
+        print(f"Updating stories ...")
+        update_all_stories()
+    else:
+        update_new_items(first_run=args.first_run,
                      skip_comments=args.skip_comments)
-    #fetch_and_store_item(39720909)
