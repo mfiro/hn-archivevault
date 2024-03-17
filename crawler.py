@@ -59,7 +59,7 @@ class Crawler:
         max_id = self.cursor.fetchone()[0]
         return max_id or 0
 
-    def update_new_items(self):
+    def fetch_new_items(self):
         max_id = self.hn_client.get_maxitem()
         if self.first_run:
             # Set a more recent starting point for the first run, as the first run takes time.
@@ -115,4 +115,4 @@ if __name__ == '__main__':
         print(f"Updating stories ...")
         crawler.update_all_stories()
     else:
-        crawler.update_new_items()
+        crawler.fetch_new_items()
