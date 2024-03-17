@@ -90,11 +90,14 @@ class Crawler:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Update Hacker News items in database.')
-    parser.add_argument('--first_run', action='store_true', 
+    parser.add_argument('--first_run',
+                        action='store_true', 
                         help='Set this flag if it is the first run to only fetch the most recent items.')
-    parser.add_argument('--skip_comments', action='store_true', 
+    parser.add_argument('--skip_comments',
+                        action='store_true', 
                         help="Set this flag if you don't want to store the comments in the database")
-    parser.add_argument('--update_stories', action='store_true', 
+    parser.add_argument('--update_stories',
+                        action='store_true', 
                         help="Set this flag if you just want to update the story informations.")
     args = parser.parse_args()
     
