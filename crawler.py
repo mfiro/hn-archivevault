@@ -1,9 +1,14 @@
-import argparse 
+import argparse
+import logging
 import sqlite3
 import time
 from tqdm import tqdm
 from hn import Client
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',)
+                    #filename='crawler.log',
+                    #filemode='a')
 
 class Crawler:
     def __init__(self,
@@ -48,17 +53,18 @@ class Crawler:
         self.connection.commit()
 
     def fetch_and_store_item(self, item_id):
-        print(f"Fetching item id {item_id} ...")
+        logging.info(f"Fetching item id {item_id} ...")
         item = self.hn_client.get_item(item_id)
 
         if item.get('deleted') or item.get('dead'):
-            print(f"Skipping{item_id}: flagged as deleted ...")
+            logging.info(f"Skipping{item_id}: flagged as deleted or dead.")
+            return
         else:
             if item['type'] == 'story':
-                print(f"Inserting {item_id} to stories in DB ...")
+                logging.info(f"Inserting {item_id} to stories in DB ...")
                 self.insert_story(item)
             elif item['type'] == 'comment' and not self.skip_comments:
-                print(f"Inserting {item_id} to comments in DB ...")
+                logging.info(f"Inserting {item_id} to comments in DB ...")
                 self.insert_comment(item)
 
     def fetch_new_items(self):
@@ -73,7 +79,7 @@ class Crawler:
             max_id = current_max_id+5
 
         # Now proceed to fetch items from current_max_id up to the max_id
-        print(f"Start Fetching {max_id - current_max_id} items ...")
+        logging.info(f"Start Fetching {max_id - current_max_id} items ...")
         for item_id in tqdm(range(current_max_id + 1, max_id + 1)):
             self.fetch_and_store_item(item_id)
 
@@ -109,7 +115,7 @@ if __name__ == '__main__':
                         help="Set this flag if you just want to update the story informations.")
     args = parser.parse_args()
     
-    print(f"Running the crawler ...")
+    logging.info(f"Running the crawler ...")
 
     # Initialising API client
     client = Client()
@@ -120,7 +126,8 @@ if __name__ == '__main__':
                       skip_comments=args.skip_comments)
 
     if args.update_stories:
-        print(f"Updating stories ...")
+        logging.info(f"Updating stories ...")
         crawler.update_all_stories()
     else:
+        logging.info(f"Fetching new items ...")
         crawler.fetch_new_items()
