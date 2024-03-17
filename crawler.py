@@ -8,39 +8,37 @@ from hn import Client
 class Crawler:
     def __init__(self,
                 hn_client,
+                db_pathname='hn_archive.db',
                 first_run=False,
                 skip_comments=False,
                 test_mode=False,
                 ):
-        self.db_pathname = 'hn_archive.db'
+        self.db_pathname = db_pathname
         self.first_run = first_run
         self.skip_comments = skip_comments
         self.test_mode = test_mode
         self.hn_client = hn_client
-
+        self.connection = sqlite3.connect(self.db_pathname)
+        self.cursor = self.connection.cursor()
+    
+    def __del__(self):
+        self.connection.close()
 
     def insert_story(self, data):
-        connection = sqlite3.connect(self.db_pathname)
-        cursor = connection.cursor()
-        cursor.execute('''
+        self.cursor.execute('''
         INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (data['id'], data['by'], data['score'], data['descendants'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
         
-        connection.commit()
-        connection.close()
+        self.connection.commit()
 
-    def insert_comment(self, data):
-        connection = sqlite3.connect(self.db_pathname)
-        cursor = connection.cursor()
-        
-        cursor.execute('''
+    def insert_comment(self, data):       
+        self.cursor.execute('''
         INSERT OR REPLACE INTO comments (id, by, parent, text, time, type, time_str)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (data['id'], data['by'], data['parent'], data['text'], data['time'], data['type'], data['time_str']))
         
-        connection.commit()
-        connection.close()
+        self.connection.commit()
 
     def fetch_and_store_item(self, item_id):
         print(f"Fetching item id {item_id} ...")
@@ -57,12 +55,8 @@ class Crawler:
                 self.insert_comment(item)
 
     def get_current_max_id_from_db(self):
-        connection = sqlite3.connect(self.db_pathname)
-        cursor = connection.cursor()
-        
-        cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
-        max_id = cursor.fetchone()[0]
-        connection.close()
+        self.cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
+        max_id = self.cursor.fetchone()[0]
         return max_id or 0
 
     def update_new_items(self):
@@ -83,12 +77,9 @@ class Crawler:
 
     def update_all_stories(self):
         # Get all the story ids
-        connection = sqlite3.connect(self.db_pathname)
-        cursor = connection.cursor()
         sql_query = 'SELECT id FROM stories'
-        cursor.execute(sql_query)
-        story_ids = cursor.fetchall()
-        connection.close()
+        self.cursor.execute(sql_query)
+        story_ids = self.cursor.fetchall()
 
         if self.test_mode:
             story_ids = story_ids[:4]
