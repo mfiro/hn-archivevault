@@ -24,6 +24,13 @@ class Crawler:
     def __del__(self):
         self.connection.close()
 
+    def __repr__(self):
+         return (
+             f"{self.__class__.__name__}:\n"
+             f"\t db_pathname={self.db_pathname!r}\n"
+             f"\t first_run={self.first_run!r}\n"
+             f"\t test_mode={self.test_mode!r}")
+
     def insert_story(self, data):
         self.cursor.execute('''
         INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
@@ -54,11 +61,6 @@ class Crawler:
                 print(f"Inserting {item_id} to comments in DB ...")
                 self.insert_comment(item)
 
-    def get_current_max_id_from_db(self):
-        self.cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
-        max_id = self.cursor.fetchone()[0]
-        return max_id or 0
-
     def fetch_new_items(self):
         max_id = self.hn_client.get_maxitem()
         if self.first_run:
@@ -75,6 +77,11 @@ class Crawler:
         for item_id in tqdm(range(current_max_id + 1, max_id + 1)):
             self.fetch_and_store_item(item_id)
 
+    def get_current_max_id_from_db(self):
+        self.cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
+        max_id = self.cursor.fetchone()[0]
+        return max_id or 0
+
     def update_all_stories(self):
         # Get all the story ids
         sql_query = 'SELECT id FROM stories'
@@ -87,6 +94,7 @@ class Crawler:
         # Loop over them
         for story_id in tqdm(story_ids):
             self.fetch_and_store_item(story_id[0])
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Update Hacker News items in database.')
