@@ -6,11 +6,21 @@ from hn import Client
 
 
 class Crawler:
-    def __init__(self):
+    def __init__(self,
+                hn_client,
+                first_run=False,
+                skip_comments=False,
+                test_mode=False,
+                ):
         self.db_pathname = 'hn_archive.db'
+        self.first_run = first_run
+        self.skip_comments = skip_comments
+        self.test_mode = test_mode
+        self.hn_client = hn_client
+
 
     def insert_story(self, data):
-        connection = sqlite3.connect('hn_archive.db')
+        connection = sqlite3.connect(self.db_pathname)
         cursor = connection.cursor()
         cursor.execute('''
         INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
@@ -21,7 +31,7 @@ class Crawler:
         connection.close()
 
     def insert_comment(self, data):
-        connection = sqlite3.connect('hn_archive.db')
+        connection = sqlite3.connect(self.db_pathname)
         cursor = connection.cursor()
         
         cursor.execute('''
@@ -32,9 +42,9 @@ class Crawler:
         connection.commit()
         connection.close()
 
-    def fetch_and_store_item(self, item_id, skip_comments=False):
+    def fetch_and_store_item(self, item_id):
         print(f"Fetching item id {item_id} ...")
-        item = client.get_item(item_id)
+        item = self.hn_client.get_item(item_id)
 
         if item.get('deleted') or item.get('dead'):
             print(f"Skipping{item_id}: flagged as deleted ...")
@@ -42,12 +52,12 @@ class Crawler:
             if item['type'] == 'story':
                 print(f"Inserting {item_id} to stories in DB ...")
                 self.insert_story(item)
-            elif item['type'] == 'comment' and not skip_comments:
+            elif item['type'] == 'comment' and not self.skip_comments:
                 print(f"Inserting {item_id} to comments in DB ...")
                 self.insert_comment(item)
 
     def get_current_max_id_from_db(self):
-        connection = sqlite3.connect('hn_archive.db')
+        connection = sqlite3.connect(self.db_pathname)
         cursor = connection.cursor()
         
         cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
@@ -55,27 +65,33 @@ class Crawler:
         connection.close()
         return max_id or 0
 
-    def update_new_items(self, first_run=False, skip_comments=False):
-        max_id = client.get_maxitem()
-        if first_run:
+    def update_new_items(self):
+        max_id = self.hn_client.get_maxitem()
+        if self.first_run:
             # Set a more recent starting point for the first run, as the first run takes time.
             current_max_id = max_id - 1000
         else:
             current_max_id = self.get_current_max_id_from_db()
+        
+        if self.test_mode:
+            max_id = current_max_id+5
 
         # Now proceed to fetch items from current_max_id up to the max_id
         print(f"Start Fetching {max_id - current_max_id} items ...")
         for item_id in tqdm(range(current_max_id + 1, max_id + 1)):
-            self.fetch_and_store_item(item_id, skip_comments)
+            self.fetch_and_store_item(item_id)
 
     def update_all_stories(self):
         # Get all the story ids
-        connection = sqlite3.connect('hn_archive.db')
+        connection = sqlite3.connect(self.db_pathname)
         cursor = connection.cursor()
         sql_query = 'SELECT id FROM stories'
         cursor.execute(sql_query)
         story_ids = cursor.fetchall()
         connection.close()
+
+        if self.test_mode:
+            story_ids = story_ids[:4]
 
         # Loop over them
         for story_id in tqdm(story_ids):
@@ -97,12 +113,12 @@ if __name__ == '__main__':
     client = Client()
 
     # Initialising the Crawler
-    crawler = Crawler()
-
+    crawler = Crawler(hn_client=client,
+                      first_run=args.first_run, 
+                      skip_comments=args.skip_comments)
 
     if args.update_stories:
         print(f"Updating stories ...")
         crawler.update_all_stories()
     else:
-        crawler.update_new_items(first_run=args.first_run,
-                     skip_comments=args.skip_comments)
+        crawler.update_new_items()
