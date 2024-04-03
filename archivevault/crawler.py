@@ -6,9 +6,9 @@ from tqdm import tqdm
 from hn import Client
 
 logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',)
-                    #filename='crawler.log',
-                    #filemode='a')
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='crawler.log',
+                    filemode='a')
 
 class Crawler:
     def __init__(self,
@@ -37,20 +37,26 @@ class Crawler:
              f"\t test_mode={self.test_mode!r}")
 
     def insert_story(self, data):
-        self.cursor.execute('''
-        INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (data['id'], data['by'], data['score'], data['descendants'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
-        
-        self.connection.commit()
+        try:
+            self.cursor.execute('''
+            INSERT or REPLACE INTO stories (id, by, score, comment_count, time, title, type, url, time_str, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (data['id'], data['by'], data['score'], data['descendants'], data['time'], data['title'], data['type'], data.get('url'), data['time_str'], int(time.time())))
+            
+            self.connection.commit()
+        except Exception as e:
+            logging.error(f"Failed to insert story {data['id']}: {e}")
 
-    def insert_comment(self, data):       
-        self.cursor.execute('''
-        INSERT OR REPLACE INTO comments (id, by, parent, text, time, type, time_str)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (data['id'], data['by'], data['parent'], data['text'], data['time'], data['type'], data['time_str']))
-        
-        self.connection.commit()
+    def insert_comment(self, data):  
+        try:
+            self.cursor.execute('''
+            INSERT OR REPLACE INTO comments (id, by, parent, text, time, type, time_str)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (data['id'], data['by'], data['parent'], data['text'], data['time'], data['type'], data['time_str']))
+            
+            self.connection.commit()
+        except Exception as e:   
+            logging.error(f"Failed to insert comment {data['id']}: {e}")
 
     def fetch_and_store_item(self, item_id):
         logging.info(f"Fetching item id {item_id} ...")
@@ -84,9 +90,13 @@ class Crawler:
             self.fetch_and_store_item(item_id)
 
     def get_current_max_id_from_db(self):
-        self.cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
-        max_id = self.cursor.fetchone()[0]
-        return max_id or 0
+        try:
+            self.cursor.execute('SELECT MAX(id) FROM (SELECT id FROM stories UNION ALL SELECT id FROM comments)')
+            max_id = self.cursor.fetchone()[0]
+            return max_id or 0
+        except Exception as e:
+            logging.error(f"Failed to get current max ID from DB: {e}")
+            return 0
 
     def update_all_stories(self):
         # Get all the story ids
